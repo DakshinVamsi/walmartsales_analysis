@@ -69,15 +69,160 @@ I developed this end-to-end data analysis project to extract critical business i
 
 ## Getting Started
 
-1. Clone the repository:
+1. Cloned the repository:
    ```bash
    git clone <repo-url>
    ```
-2. Install Python libraries:
+2. Installed Python libraries:
    ```bash
    pip install -r requirements.txt
    ```
-3. Set up your Kaggle API, download the data, and follow the steps to load and analyze.
+3. Set up Kaggle API, downloaded the data, loaded data for analysis.
+
+4. ### Business Problems and SQL Queries
+
+Below are the business problems I addressed as part of the Walmart data analysis project, along with the corresponding SQL queries. These queries reflect my approach to solving real-world analytical challenges using structured problem-solving techniques.
+
+---
+
+#### 1. **Finding the Number of Transactions and Quantities Sold for Each Payment Method**  
+I analyzed the sales data to identify the total number of transactions and quantities sold for each payment method.  
+
+**SQL Query:**  
+```sql
+SELECT payment_method, COUNT(*) AS 'Transactions', SUM(quantity) AS 'Total Quantity' 
+FROM walmart 
+GROUP BY payment_method;
+```
+
+---
+
+#### 2. **Identifying the Highest-Rated Category in Each Branch**  
+I determined the category with the highest average rating for each branch to understand customer preferences.  
+
+**SQL Query:**  
+```sql
+SELECT Branch, category, AVG(rating) AS avg_rating 
+FROM (
+    SELECT Branch, category, AVG(rating) AS avg_rating, 
+           RANK() OVER(PARTITION BY Branch ORDER BY AVG(rating) DESC) AS ranks 
+    FROM walmart 
+    GROUP BY Branch, category
+) AS ranked_data 
+WHERE ranks = 1;
+```
+
+---
+
+#### 3. **Identifying the Busiest Day for Each Branch**  
+I examined transaction data to determine the busiest day of the week for each branch.  
+
+**SQL Query:**  
+```sql
+SELECT Branch, DATE_FORMAT(date, '%W') AS day_name, COUNT(*) AS 'Transactions' 
+FROM (
+    SELECT Branch, DATE_FORMAT(date, '%W') AS day_name, COUNT(*) AS 'Transactions', 
+           RANK() OVER(PARTITION BY Branch ORDER BY COUNT(*) DESC) AS ranks 
+    FROM walmart 
+    GROUP BY Branch, day_name
+) AS ranked_data 
+WHERE ranks = 1;
+```
+
+---
+
+#### 4. **Determining the Average, Minimum, and Maximum Ratings of Categories by City**  
+I analyzed product ratings to calculate the average, minimum, and maximum ratings for each category in every city.  
+
+**SQL Query:**  
+```sql
+SELECT City, category, MIN(rating) AS min_rating, MAX(rating) AS max_rating, AVG(rating) AS avg_rating 
+FROM walmart 
+GROUP BY City, category 
+ORDER BY City, category ASC;
+```
+
+---
+
+#### 5. **Calculating Total Profit for Each Category**  
+I calculated the total profit for each product category by considering the formula:  
+`total_profit = unit_price * quantity * profit_margin`.  
+
+**SQL Query:**  
+```sql
+SELECT category, SUM(unit_price * quantity * profit_margin) AS total_profit 
+FROM walmart 
+GROUP BY category 
+ORDER BY total_profit DESC;
+```
+
+---
+
+#### 6. **Determining the Most Common Payment Method for Each Branch**  
+I identified the most preferred payment method for each branch to uncover customer preferences.  
+
+**SQL Query:**  
+```sql
+SELECT Branch, payment_method, COUNT(*) AS Transactions 
+FROM (
+    SELECT Branch, payment_method, COUNT(*) AS Transactions, 
+           RANK() OVER(PARTITION BY Branch ORDER BY COUNT(*) DESC) AS ranks 
+    FROM walmart 
+    GROUP BY Branch, payment_method
+) AS ranked_data 
+WHERE ranks = 1;
+```
+
+---
+
+#### 7. **Categorizing Sales into Time Shifts**  
+I segmented transactions into three time shifts: Morning, Afternoon, and Evening, to understand sales distribution across the day.  
+
+**SQL Query:**  
+```sql
+SELECT 
+    CASE
+        WHEN HOUR(time) < 12 THEN 'Morning'
+        WHEN HOUR(time) BETWEEN 12 AND 17 THEN 'Afternoon'
+        ELSE 'Evening'
+    END AS day_time, 
+    COUNT(*) AS 'No of Invoices' 
+FROM walmart 
+GROUP BY day_time 
+ORDER BY 'No of Invoices' DESC;
+```
+
+---
+
+#### 8. **Identifying Branches with the Highest Revenue Decrease**  
+I analyzed revenue data from 2022 and 2023 to identify branches with the most significant decrease in revenue.  
+
+**SQL Query:**  
+```sql
+WITH rev_2022 AS (
+    SELECT Branch, SUM(total) AS revenue 
+    FROM walmart 
+    WHERE DATE_FORMAT(date, '%Y') = 2022 
+    GROUP BY Branch
+), 
+rev_2023 AS (
+    SELECT Branch, SUM(total) AS revenue 
+    FROM walmart 
+    WHERE DATE_FORMAT(date, '%Y') = 2023 
+    GROUP BY Branch
+) 
+SELECT rev_2022.Branch, rev_2022.revenue AS 'Revenue in 2022', 
+       rev_2023.revenue AS 'Revenue in 2023', 
+       ROUND((rev_2022.revenue - rev_2023.revenue) / rev_2022.revenue, 2) AS dec_ratio 
+FROM rev_2022 
+JOIN rev_2023 ON rev_2022.Branch = rev_2023.Branch 
+WHERE rev_2022.revenue > rev_2023.revenue 
+ORDER BY dec_ratio DESC;
+```
+
+---
+
+
 
 ---
 
